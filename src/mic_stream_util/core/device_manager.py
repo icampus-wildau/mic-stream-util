@@ -6,8 +6,8 @@ from typing import Any, Dict, List, Optional
 
 import sounddevice as sd
 
-from ..exceptions import DeviceNotFoundError
-from ..util.fuzzy_match import find_best_match
+from mic_stream_util.exceptions import DeviceNotFoundError
+from mic_stream_util.util.fuzzy_match import find_best_match
 
 
 class DeviceManager:

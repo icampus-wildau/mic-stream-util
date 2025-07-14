@@ -41,7 +41,7 @@ class AudioConfig:
     # The latency for the audio stream. Supported values are "low" and "high"
     latency: str = "low"
 
-    # The number of samples to be processed at a time in callbacks.
+    # The number of samples to be processed at a time in callbacks (or as default value for read calls).
     num_samples: int = 512
 
     @classmethod

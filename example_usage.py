@@ -49,6 +49,9 @@ def example_basic_streaming():
                 audio_data = mic_stream.read(1024)
                 print(f"Read {len(audio_data)} samples, shape: {audio_data.shape}")
                 # time.sleep(0.1)
+                # Print all data
+                print(audio_data)
+                break
 
     except Exception as e:
         print(f"Error: {e}")
