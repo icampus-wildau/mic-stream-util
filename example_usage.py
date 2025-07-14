@@ -78,7 +78,7 @@ def example_raw_bytes():
                 print(f"Read {len(raw_data)} bytes")
 
                 # Convert to numpy array manually if needed
-                audio_array = np.frombuffer(raw_data, dtype=np.float32)
+                audio_array = np.frombuffer(raw_data, dtype=config.dtype)
                 print(f"Converted to {len(audio_array)} samples")
                 # time.sleep(0.1)
 

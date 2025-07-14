@@ -8,11 +8,17 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "click>=8.2.1",
+    "click-aliases>=1.0.5",
     "fuzzywuzzy>=0.18.0",
     "numpy>=2.3.1",
     "python-levenshtein>=0.27.1",
     "sounddevice>=0.5.2",
+    "soundfile>=0.13.1",
 ]
+
+[project.scripts]
+mic = "mic_stream_util.cli:main"
 
 [build-system]
 requires = ["hatchling"]

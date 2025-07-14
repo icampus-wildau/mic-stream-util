@@ -48,6 +48,7 @@ class SharedAudioBuffer:
 
         if shm_name is None:
             shm_name = self.shm_name
+            print(f"Creating shared memory for buffer with name: {self.shm_name} and size: {self.buffer_size_bytes}")
             # Create shared memory for the ring buffer
             self.shm = shared_memory.SharedMemory(name=self.shm_name, create=True, size=self.buffer_size_bytes)
 
@@ -110,8 +111,8 @@ class SharedAudioBuffer:
                 data_len = self.buffer_size_bytes
 
             # Get current positions
-            read_pos = self.meta_array[0]
-            write_pos = self.meta_array[1]
+            read_pos = self.meta_array[0]  # type: ignore
+            write_pos = self.meta_array[1]  # type: ignore
 
             # Write data to buffer
             if write_pos + data_len <= self.buffer_size_bytes:
@@ -121,17 +122,26 @@ class SharedAudioBuffer:
             else:
                 # Wrapping case: split data across buffer end
                 first_part = self.buffer_size_bytes - write_pos
-                self.shm.buf[write_pos:] = data[:first_part]
+                try:
+                    self.shm.buf[write_pos : write_pos + first_part] = data[:first_part]
+                except Exception as e:
+                    print(f"Error writing data to buffer: {e}")
+                    print(f"write_pos: {write_pos}, data_len: {data_len}, first_part: {first_part}")
+                    print(f"data part: {len(data[:first_part])}")
+                    print(f"shm.buf: {len(self.shm.buf)}")
+                    print(f"shm.buf part: {len(self.shm.buf[write_pos : write_pos + first_part])}")
+
+                    raise e
                 self.shm.buf[: data_len - first_part] = data[first_part:]
                 write_pos = data_len - first_part
 
             # Update write position
-            self.meta_array[1] = write_pos
+            self.meta_array[1] = write_pos  # type: ignore
 
             # If buffer is full, advance read position (drop oldest data)
             if (write_pos + 1) % self.buffer_size_bytes == read_pos:
                 read_pos = (read_pos + data_len) % self.buffer_size_bytes
-                self.meta_array[0] = read_pos
+                self.meta_array[0] = read_pos  # type: ignore
 
             # Signal that new data is available
             self.data_available.set()
@@ -155,8 +165,8 @@ class SharedAudioBuffer:
 
         while True:
             with self.lock:
-                read_pos = self.meta_array[0]
-                write_pos = self.meta_array[1]
+                read_pos = self.meta_array[0]  # type: ignore
+                write_pos = self.meta_array[1]  # type: ignore
 
                 # Calculate available data
                 if write_pos >= read_pos:
@@ -177,7 +187,7 @@ class SharedAudioBuffer:
                         read_pos = num_bytes - first_part
 
                     # Update read position
-                    self.meta_array[0] = read_pos
+                    self.meta_array[0] = read_pos  # type: ignore
                     return data
 
                 # Clear the event since we don't have enough data
