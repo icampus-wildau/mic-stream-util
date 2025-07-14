@@ -110,7 +110,7 @@ class DeviceManager:
         try:
             devices: sd.DeviceList = sd.query_devices()  # type: ignore
 
-            candidates = [{"index": i, **device} for i, device in enumerate(devices) if device.get("name", "").lower() == device_identifier.lower()]
+            candidates = [{"index": i, **device} for i, device in enumerate(devices)]
 
             result = find_best_match(device_identifier, candidates)
             if result:

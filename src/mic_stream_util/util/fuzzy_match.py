@@ -19,6 +19,7 @@ def find_best_match(query: str, candidates: List[Dict[str, Any]], threshold: int
     Returns:
         Tuple of (index, device_dict) or None if no match found
     """
+
     if not candidates:
         return None
 
