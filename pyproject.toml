@@ -1,0 +1,17 @@
+[project]
+name = "mic-stream-util"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Valentin Schroeter", email = "valentin.schroeter@student.hpi.de" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fuzzywuzzy>=0.18.0",
+    "sounddevice>=0.5.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
