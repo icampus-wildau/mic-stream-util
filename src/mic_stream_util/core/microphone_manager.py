@@ -76,7 +76,7 @@ class MicrophoneStream:
             while not self._callback_stop_event.is_set():
                 try:
                     # Read audio data from buffer
-                    audio_array = self.read(self.config.num_samples)
+                    audio_array = self._read(self.config.num_samples)
 
                     # Call the callback function
                     self._callback(audio_array)
@@ -219,6 +219,34 @@ class MicrophoneStream:
         """Check if the stream is currently active."""
         return self._streaming and self.process is not None and self.process.is_alive()
 
+    def _read_raw(self, num_samples: int) -> bytes:
+        """
+        Reads raw audio data from the stream buffer.
+        Blocks until at least num_samples are available.
+        """
+        if not self.is_streaming() or self.buffer is None:
+            raise RuntimeError("Stream is not active")
+
+        return self.buffer.read(num_samples)
+
+    def _read(self, num_samples: int) -> np.ndarray:
+        """
+        Reads audio data from the stream buffer.
+        Blocks until at least num_samples are available.
+        """
+
+        if num_samples is None:
+            num_samples = self.config.num_samples
+
+        raw_data = self._read_raw(num_samples)
+
+        audio_array = np.frombuffer(raw_data, dtype=self.config.dtype)
+
+        # Reshape to (num_samples, channels)
+        audio_array = audio_array.reshape(-1, self.config.channels)
+
+        return audio_array
+
     def read_raw(self, num_samples: int) -> bytes:
         """
         Reads raw audio data from the stream buffer.
@@ -234,13 +262,11 @@ class MicrophoneStream:
         bytes
             Raw audio data as bytes.
         """
-        if not self.is_streaming() or self.buffer is None:
-            raise RuntimeError("Stream is not active")
 
         if self._callback:
             raise RuntimeError("Cannot use read methods when callback is active. Use set_callback(None) to disable callback mode.")
 
-        return self.buffer.read(num_samples)
+        return self._read_raw(num_samples)
 
     def read(self, num_samples: int | None = None) -> np.ndarray:
         """
