@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from contextlib import contextmanager
@@ -200,6 +201,21 @@ class SpeechManager:
             vad_config: Configuration for voice activity detection parameters
         """
         self.audio_config = audio_config
+
+        # Check that the audio config is valid --> silero only supports 16000Hz with 512 samples or 8000Hz with 256 samples
+        if audio_config.sample_rate == 16000:
+            if audio_config.num_samples != 512:
+                logging.warning("Silero VAD only supports 16000Hz with 512 samples, setting num_samples to 512")
+                audio_config.num_samples = 512
+        elif audio_config.sample_rate == 8000:
+            if audio_config.num_samples != 256:
+                logging.warning("Silero VAD only supports 8000Hz with 256 samples, setting num_samples to 256")
+                audio_config.num_samples = 256
+        else:
+            raise ValueError(
+                f"Silero VAD only supports 16000Hz with 512 samples or 8000Hz with 256 samples. Got {audio_config.sample_rate}Hz with {audio_config.num_samples} samples"
+            )
+
         self.vad_config = vad_config
 
         # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -236,14 +252,18 @@ class SpeechManager:
         self.pre_speech_chunks_needed = max(1, int(self.vad_config.padding_before_ms / (self.frame_duration_s * 1000)))
         self.post_speech_chunks_needed = max(1, int(self.vad_config.padding_after_ms / (self.frame_duration_s * 1000)))
 
-    def start_stream(self) -> None:
+    def is_streaming(self) -> bool:
+        """Check if the microphone stream is currently active."""
+        return self.microphone_stream.is_streaming()
+
+    def start_stream(self, ignore_already_started: bool = True) -> None:
         """Start the audio stream and begin processing audio chunks."""
         self.callback_processor.start()
-        self.microphone_stream.start_stream()
+        self.microphone_stream.start_stream(ignore_already_started=ignore_already_started)
 
-    def stop_stream(self) -> None:
+    def stop_stream(self, ignore_not_started: bool = False) -> None:
         """Stop the audio stream and cease processing audio chunks."""
-        self.microphone_stream.stop_stream()
+        self.microphone_stream.stop_stream(ignore_not_started=ignore_not_started)
         self.callback_processor.stop()
 
     @contextmanager
@@ -347,6 +367,8 @@ class SpeechManager:
         try:
             # Update current time
             self.current_time += self.frame_duration_s
+
+            audio_chunk = audio_chunk.copy()
 
             # Get VAD probability
             tensor = torch.from_numpy(audio_chunk).squeeze()

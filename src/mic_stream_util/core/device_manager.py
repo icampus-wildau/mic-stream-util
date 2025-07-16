@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 
 import sounddevice as sd
 
 from mic_stream_util.exceptions import DeviceNotFoundError
 from mic_stream_util.util.fuzzy_match import find_best_match
+
+
+class DeviceInfo(TypedDict):
+    index: int
+    name: str
+    max_input_channels: int
+    default_samplerate: int
+    hostapi: str
+    supported_samplerates: List[int]
 
 
 class DeviceManager:
@@ -142,7 +151,7 @@ class DeviceManager:
             return None
 
     @staticmethod
-    def get_device_info(device_identifier: str | int) -> Dict[str, Any]:
+    def get_device_info(device_identifier: str | int) -> DeviceInfo:
         """
         Get detailed information about a specific device.
 

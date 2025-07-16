@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from contextlib import contextmanager
@@ -134,9 +135,13 @@ class MicrophoneStream:
         finally:
             buffer.close()
 
-    def start_stream(self) -> None:
+    def start_stream(self, ignore_already_started: bool = True) -> None:
         """Start the microphone stream in a separate process."""
+        if self._streaming and not ignore_already_started:
+            return
+
         if self._streaming:
+            logging.warning("Microphone stream already started, ignoring start request")
             return
 
         # Create shared buffer
@@ -177,9 +182,13 @@ class MicrophoneStream:
         finally:
             self.stop_stream()
 
-    def stop_stream(self) -> None:
+    def stop_stream(self, ignore_not_started: bool = True) -> None:
         """Stop the microphone stream."""
+        if not self._streaming and ignore_not_started:
+            return
+
         if not self._streaming:
+            logging.warning("Microphone stream not started, cannot stop")
             return
 
         # Signal process to stop

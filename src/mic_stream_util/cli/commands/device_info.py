@@ -19,7 +19,11 @@ def device_info(device_identifier: str, json_output: bool):
     from mic_stream_util.exceptions import DeviceNotFoundError
 
     try:
-        device_info = DeviceManager.get_device_info(device_identifier)
+        try:
+            id = int(device_identifier)
+        except ValueError:
+            id = device_identifier
+        device_info = DeviceManager.get_device_info(id)
 
         if json_output:
             click.echo(json.dumps(device_info, indent=2))
