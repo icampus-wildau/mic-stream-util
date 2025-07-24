@@ -44,7 +44,7 @@ class SharedAudioBuffer:
 
         if shm_name is None:
             shm_name = self.shm_name
-            print(f"Creating shared memory for buffer with name: {self.shm_name} and size: {self.buffer_size_bytes}")
+            # print(f"Creating shared memory for buffer with name: {self.shm_name} and size: {self.buffer_size_bytes}")
             # Create shared memory for the ring buffer
             self.shm = shared_memory.SharedMemory(name=self.shm_name, create=True, size=self.buffer_size_bytes)
 
@@ -196,7 +196,7 @@ class SharedAudioBuffer:
     def close(self) -> None:
         """Close the shared memory buffers."""
         try:
-            print(f"Closing shared memory buffers with name: {self.shm_name}")
+            # print(f"Closing shared memory buffers with name: {self.shm_name}")
             self.meta_array = None
             self.shm.close()
             self.meta_shm.close()
@@ -206,7 +206,7 @@ class SharedAudioBuffer:
     def unlink(self) -> None:
         """Unlink the shared memory buffers from the system."""
         try:
-            print(f"Unlinking shared memory buffers with name: {self.shm_name}")
+            # print(f"Unlinking shared memory buffers with name: {self.shm_name}")
             self.meta_array = None
             self.shm.unlink()
             self.meta_shm.unlink()

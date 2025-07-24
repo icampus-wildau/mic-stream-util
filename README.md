@@ -1,6 +1,6 @@
 # Microphone Stream Utility
 
-A Python utility for managing microphone streams with support for both manual reading and callback-based processing.
+A Python utility for managing microphone streams with support for both manual reading and callback-based processing, plus optional Voice Activity Detection (VAD).
 
 ## Features
 
@@ -11,16 +11,36 @@ A Python utility for managing microphone streams with support for both manual re
 - **Manual reading**: Traditional read-based approach for custom processing
 - **Device management**: Automatic device detection and selection
 - **Context manager support**: Easy stream lifecycle management
+- **Voice Activity Detection (VAD)**: Optional speech detection using Silero VAD (requires additional dependencies)
 
 ## Installation
+
+### Basic Installation (Core Features Only)
 
 ```bash
 # Clone the repository
 git clone <repository-url>
 cd mic-stream-util
 
-# Install dependencies
+# Install core dependencies only
 uv sync
+```
+
+### With Voice Activity Detection (VAD)
+
+```bash
+# Install with VAD support (includes torch and silero-vad)
+uv add mic-stream-util[vad]
+
+# Or if installing from source
+uv sync --extra vad
+```
+
+### All Features
+
+```bash
+# Install with all optional features
+uv add mic-stream-util[all]
 ```
 
 ## Quick Start
@@ -85,9 +105,72 @@ with mic_stream.stream():
         time.sleep(0.1)
 ```
 
+### Voice Activity Detection (VAD)
+
+```python
+from mic_stream_util import SpeechManager, VADConfig, AudioConfig
+
+# Check if VAD is available
+from mic_stream_util import VAD_AVAILABLE
+if not VAD_AVAILABLE:
+    print("VAD requires additional dependencies. Install with: pip install mic-stream-util[vad]")
+    exit(1)
+
+# Create configurations
+audio_config = AudioConfig(sample_rate=16000, dtype="float32", num_samples=512)
+vad_config = VADConfig(threshold=0.5, padding_before_ms=300, padding_after_ms=300)
+
+# Create speech manager
+speech_manager = SpeechManager(audio_config=audio_config, vad_config=vad_config)
+
+def on_speech_start(timestamp: float):
+    print(f"Speech started at {timestamp:.2f}s")
+
+def on_speech_ended(speech_chunk):
+    print(f"Speech ended, duration: {speech_chunk.duration:.2f}s")
+
+# Set callbacks
+speech_manager.set_callbacks(
+    on_speech_start=on_speech_start,
+    on_speech_ended=on_speech_ended
+)
+
+# Start VAD
+with speech_manager.stream_context():
+    import time
+    while True:
+        time.sleep(0.1)
+```
+
+## Command Line Interface
+
+The package includes a CLI with various commands:
+
+```bash
+# List audio devices
+mic devices
+
+# Monitor audio levels
+mic monitor
+
+# Record audio
+mic record --output recording.wav
+
+# Voice Activity Detection (requires VAD dependencies)
+mic vad --threshold 0.5
+
+# Test latency
+mic latency-test
+
+# CPU usage monitoring
+mic cpu-usage
+```
+
 ## API Reference
 
-### MicrophoneStream
+### Core Classes
+
+#### MicrophoneStream
 
 Main class for managing microphone streams.
 
@@ -176,11 +259,47 @@ AudioConfig(
 - `latency`: Latency setting ("low" or "high")
 - `num_samples`: Number of samples to process at a time
 
+### Speech Classes (VAD Dependencies Required)
+
+#### SpeechManager
+
+Main class for Voice Activity Detection.
+
+#### Constructor
+
+```python
+SpeechManager(audio_config: AudioConfig, vad_config: VADConfig)
+```
+
+#### VADConfig
+
+Configuration for Voice Activity Detection.
+
+```python
+VADConfig(
+    threshold: float = 0.5,
+    padding_before_ms: int = 300,
+    padding_after_ms: int = 300,
+    max_silence_ms: int = 1000,
+    min_speech_duration_ms: int = 250,
+    max_speech_duration_s: float = float("inf")
+)
+```
+
 ## Examples
 
-See `example_callback_usage.py` for a complete example demonstrating both callback and manual reading modes.
+See the example files for complete demonstrations:
+- `example_usage.py` - Basic microphone usage
+- `example_callback_usage.py` - Callback-based processing
+- `example_speech_usage.py` - Voice Activity Detection
 
 ## Important Notes
+
+### Optional Dependencies
+
+- **Core functionality**: Works without any additional dependencies
+- **VAD functionality**: Requires `torch` and `silero-vad` (install with `[vad]` extra)
+- **Check availability**: Use `from mic_stream_util import VAD_AVAILABLE` to check if VAD is available
 
 ### Callback Mode vs Manual Reading
 
@@ -205,4 +324,7 @@ uv run pytest
 
 # Run example
 uv run example_callback_usage.py
+
+# Install development dependencies
+uv sync --extra vad
 ```

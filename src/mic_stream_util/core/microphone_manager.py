@@ -127,8 +127,11 @@ class MicrophoneStream:
 
             # Start the audio stream
             with sd.InputStream(callback=audio_callback, **config.to_sounddevice_kwargs()):
-                # Keep the stream running until stop event is set
-                stop_event.wait()
+                try:
+                    # Keep the stream running until stop event is set
+                    stop_event.wait()
+                except KeyboardInterrupt:
+                    pass
 
         except Exception as e:
             error_queue.put(f"Audio capture process error: {e}")
@@ -146,7 +149,7 @@ class MicrophoneStream:
 
         # Create shared buffer
         self.buffer = SharedAudioBuffer(self.config)
-        print(f"Created shared buffer with name: {self.buffer.shm_name}")
+        # print(f"Created shared buffer with name: {self.buffer.shm_name}")
 
         # Create process control objects
         self.stop_event = Event()
@@ -155,6 +158,9 @@ class MicrophoneStream:
         # Start audio capture process
         self.process = Process(target=MicrophoneStream._audio_capture_process, args=(self.config, self.buffer, self.stop_event, self.error_queue), daemon=True)
         self.process.start()
+        
+        # Wait a bit for the stream to start
+        time.sleep(0.1)
 
         # Start callback processing thread if callback is set
         if self._callback:
@@ -163,9 +169,6 @@ class MicrophoneStream:
             self._callback_thread.start()
 
         self._streaming = True
-
-        # Wait a bit for the stream to start
-        time.sleep(0.1)
 
         # Check for immediate errors
         if not self.error_queue.empty():

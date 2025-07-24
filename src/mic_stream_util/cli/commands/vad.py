@@ -33,10 +33,24 @@ def vad(
     model_path: Optional[str],
 ):
     """Run Voice Activity Detection on microphone input."""
-    # Dynamic imports for better response time
+    # Check if VAD functionality is available
+    try:
+        from mic_stream_util import VAD_AVAILABLE
+        if not VAD_AVAILABLE:
+            raise ImportError("VAD functionality not available")
+    except ImportError:
+        click.echo("❌ VAD functionality requires additional dependencies.")
+        click.echo("Install with: pip install mic-stream-util[vad] or uv add mic-stream-util[vad]")
+        return
 
-    from mic_stream_util.core.audio_config import AudioConfig
-    from mic_stream_util.speech import SpeechManager, VADConfig
+    # Dynamic imports for better response time
+    try:
+        from mic_stream_util.core.audio_config import AudioConfig
+        from mic_stream_util.speech import SpeechManager, VADConfig
+    except ImportError as e:
+        click.echo(f"❌ Failed to import VAD dependencies: {e}")
+        click.echo("Install with: pip install mic-stream-util[vad] or uv add mic-stream-util[vad]")
+        return
 
     try:
         # Create configurations
@@ -97,7 +111,9 @@ def vad(
 
         except KeyboardInterrupt:
             click.echo("\nVAD stopped by user")
+        finally:
+            speech_manager.stop_stream()
 
     except Exception as e:
-        click.echo(f"Error during VAD: {e}", err=True)
-        raise click.Abort()
+        click.echo(f"❌ Error: {e}")
+        return
