@@ -24,21 +24,52 @@ class DeviceManager:
 
     _devices_cache: Optional[List[Dict[str, Any]]] = None
 
+    DEVICE_IGNORE_LIST = [
+        "sysdefault",
+        "default",
+        "spdif",
+        "hdmi",
+        "iec958",
+        "dmix",
+        "dsnoop",
+        "null",
+        "monitor",
+        "pulse",
+    ]
+
     @staticmethod
-    def get_devices(refresh: bool = False) -> List[Dict[str, Any]]:
+    def get_devices(refresh: bool = False, ignore_list: List[str] = DEVICE_IGNORE_LIST) -> List[Dict[str, Any]]:
         """
         Get a list of available audio input devices.
 
         Args:
             refresh: Force refresh of device cache
-
+            ignore_list: List of device names to ignore. Defaults to DEVICE_IGNORE_LIST.
         Returns:
             List of device dictionaries with index and device info
         """
         if DeviceManager._devices_cache is None or refresh:
             try:
+                DeviceManager._devices_cache = []
                 devices: sd.DeviceList = sd.query_devices()  # type: ignore
-                DeviceManager._devices_cache = [{"index": i, **device} for i, device in enumerate(devices) if device.get("max_input_channels", 0) > 0]
+
+                for device in devices:
+                    try:
+                        index = device["index"]
+                        name = device["name"]
+
+                        inchannels = device.get("max_input_channels", 0)
+                        if inchannels <= 0:
+                            continue
+
+                        if name in ignore_list:
+                            continue
+
+                        sd.check_input_settings(device=index, samplerate=16000, channels=1)
+                        DeviceManager._devices_cache.append({"index": index, **device})
+                    except Exception:
+                        continue
+
             except Exception as e:
                 raise RuntimeError(f"Failed to query devices: {e}")
 
