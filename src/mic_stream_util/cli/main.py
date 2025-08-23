@@ -20,6 +20,7 @@ def main():
 
 # Add all commands to the main group
 main.add_command(devices.devices, aliases=["d", "ls", "list"])
+main.add_command(devices.diagnose, aliases=["diag", "debug"])
 main.add_command(device_info.device_info, aliases=["i", "info"])
 main.add_command(record.record, aliases=["r", "rec"])
 main.add_command(monitor.monitor, aliases=["m", "mon"])
