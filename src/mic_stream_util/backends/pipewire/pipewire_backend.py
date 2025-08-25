@@ -6,11 +6,15 @@ import re
 import subprocess
 from typing import Any
 
-from mic_stream_util.backends.base_backend import BaseDeviceBackend, DeviceInfo, SampleSpecification
+from mic_stream_util.backends.base_backend import DeviceBackend, DeviceInfo, SampleSpecification
 
 
-class PipewireBackend(BaseDeviceBackend):
+class PipewireBackend(DeviceBackend):
     """Pipewire backend implementation for audio device management."""
+
+    def get_backend_name(self) -> str:
+        """Get the name of the backend."""
+        return "pipewire"
 
     def backend_is_available(self) -> bool:
         """Check if the pipewire backend is available."""
@@ -251,3 +255,73 @@ class PipewireBackend(BaseDeviceBackend):
         except Exception as e:
             print(f"Failed to set source mute: {e}")
             return False
+
+    def set_default_source(self, source_index: int) -> bool:
+        """Set a source as the default input device."""
+        try:
+            # Get the source name
+            source_info = self.get_source_info(source_index)
+            source_name = source_info["name"]
+
+            # Set as default source
+            result = subprocess.run(["pactl", "set-default-source", source_name], capture_output=True, text=True, timeout=5)
+
+            return result.returncode == 0
+
+        except Exception as e:
+            print(f"Failed to set default source: {e}")
+            return False
+
+    def get_pipewire_device_index(self) -> int | None:
+        """Get the sounddevice index for the 'pipewire' device."""
+        try:
+            import sounddevice as sd
+
+            devices = sd.query_devices()
+            for i, device in enumerate(devices):
+                if device["name"] == "pipewire":
+                    return i
+
+            return None
+
+        except Exception as e:
+            print(f"Failed to get pipewire device index: {e}")
+            return None
+
+    def route_source_to_default(self, source_index: int) -> bool:
+        """Route a specific source to be the default input for sounddevice."""
+        try:
+            # First, set this source as the default in Pipewire
+            if not self.set_default_source(source_index):
+                return False
+
+            # Get the pipewire device index for sounddevice
+            pipewire_device_index = self.get_pipewire_device_index()
+            if pipewire_device_index is None:
+                print("Warning: Could not find 'pipewire' device in sounddevice")
+                return True  # Still return True as the source is set as default
+
+            return True
+
+        except Exception as e:
+            print(f"Failed to route source to default: {e}")
+            return False
+
+    def prepare_device_for_streaming(self, device_identifier: int | str) -> dict:
+        """
+        Prepare a device for streaming with pipewire.
+        For pipewire, we route the source to default and return the pipewire device index.
+        """
+        device_info = self.get_device_info(device_identifier)
+        source_index = device_info["index"]
+
+        # Route the source to be the default
+        if not self.route_source_to_default(source_index):
+            raise RuntimeError(f"Failed to route source {source_index} to default")
+
+        # Get the pipewire device index for sounddevice
+        pipewire_device_index = self.get_pipewire_device_index()
+        if pipewire_device_index is None:
+            raise RuntimeError("Could not find 'pipewire' device in sounddevice")
+
+        return {"device": pipewire_device_index}

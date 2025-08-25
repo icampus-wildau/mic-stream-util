@@ -10,6 +10,7 @@ from typing import Callable
 import numpy as np
 import sounddevice as sd
 
+from mic_stream_util.backends import DeviceBackend
 from mic_stream_util.core.audio_buffer import SharedAudioBuffer
 from mic_stream_util.core.audio_config import AudioConfig
 
@@ -35,6 +36,9 @@ class MicrophoneStream:
         self.stop_event: Event | None = None  # type: ignore
         self.error_queue: Queue | None = None
         self._streaming = False
+
+        # Backend for device management
+        self.backend: DeviceBackend | None = None
 
         # Callback-related attributes
         self._callback: Callable[[np.ndarray], None] | None = None
@@ -95,6 +99,7 @@ class MicrophoneStream:
         buffer: SharedAudioBuffer,
         stop_event: Event,  # type: ignore
         error_queue: Queue,
+        backend: DeviceBackend | None = None,
     ) -> None:
         """
         Audio capture process that continuously reads from microphone and writes to shared buffer.
@@ -125,8 +130,21 @@ class MicrophoneStream:
                 data = indata.tobytes()
                 buffer.write(data)
 
+            # Prepare device for streaming if backend is available and device is specified
+            stream_kwargs = config.to_sounddevice_kwargs()
+            if backend and config.device is not None:
+                try:
+                    # Prepare the device for streaming (backend-specific setup)
+                    device_params = backend.prepare_device_for_streaming(config.device)
+                    # Update stream kwargs with backend-prepared device parameters
+                    stream_kwargs.update(device_params)
+                    print(f"Prepared device for streaming: {device_params}")
+                except Exception as e:
+                    error_queue.put(f"Failed to prepare device for streaming: {e}")
+                    return
+
             # Start the audio stream
-            with sd.InputStream(callback=audio_callback, **config.to_sounddevice_kwargs()):
+            with sd.InputStream(callback=audio_callback, **stream_kwargs):
                 try:
                     # Keep the stream running until stop event is set
                     stop_event.wait()
@@ -147,6 +165,15 @@ class MicrophoneStream:
             logging.warning("Microphone stream already started, ignoring start request")
             return
 
+        # Initialize backend if not already done
+        if self.backend is None:
+            try:
+                self.backend = DeviceBackend.get_backend()
+                print(f"Using backend: {self.backend.__class__.__name__}")
+            except Exception as e:
+                logging.warning(f"Could not initialize backend: {e}")
+                self.backend = None
+
         # Create shared buffer
         self.buffer = SharedAudioBuffer(self.config)
         # print(f"Created shared buffer with name: {self.buffer.shm_name}")
@@ -156,9 +183,9 @@ class MicrophoneStream:
         self.error_queue = Queue()
 
         # Start audio capture process
-        self.process = Process(target=MicrophoneStream._audio_capture_process, args=(self.config, self.buffer, self.stop_event, self.error_queue), daemon=True)
+        self.process = Process(target=MicrophoneStream._audio_capture_process, args=(self.config, self.buffer, self.stop_event, self.error_queue, self.backend), daemon=True)
         self.process.start()
-        
+
         # Wait a bit for the stream to start
         time.sleep(0.1)
 

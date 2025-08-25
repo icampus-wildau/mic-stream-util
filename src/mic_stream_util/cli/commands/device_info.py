@@ -15,30 +15,42 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 def device_info(device_identifier: str, json_output: bool):
     """Get detailed information about a specific device."""
     # Dynamic imports for better response time
-    from mic_stream_util.core.device_manager import DeviceManager
+    from mic_stream_util.backends import DeviceBackend
     from mic_stream_util.exceptions import DeviceNotFoundError
 
     try:
-        try:
-            id = int(device_identifier)
-        except ValueError:
-            id = device_identifier
-        device_info = DeviceManager.get_device_info(id)
+        backend = DeviceBackend.get_backend()
+        device_info = backend.get_device_info(device_identifier)
 
         if json_output:
             click.echo(json.dumps(device_info, indent=2))
         else:
-            click.echo(f"\nDevice Information for '{device_identifier}':")
+            click.echo(f"\nDevice Information for '{device_identifier}' (Backend: {backend.__class__.__name__}):")
             click.echo("-" * 50)
             click.echo(f"Index: {device_info['index']}")
             click.echo(f"Name: {device_info['name']}")
-            click.echo(f"Max Input Channels: {device_info['max_input_channels']}")
-            click.echo(f"Default Sample Rate: {device_info.get('default_samplerate', 'Unknown')}")
-            click.echo(f"Host API: {device_info.get('hostapi', 'Unknown')}")
-            click.echo(f"Supported Sample Rates: {device_info.get('supported_samplerates', [])}")
+            click.echo(f"Description: {device_info.get('description', 'N/A')}")
+            click.echo(f"Driver: {device_info.get('driver', 'Unknown')}")
 
-    except DeviceNotFoundError as e:
-        click.echo(f"Device not found: {e}", err=True)
+            sample_spec = device_info.get("sample_specification", {})
+            click.echo(f"Sample Format: {sample_spec.get('sample_format', 'Unknown')}")
+            click.echo(f"Sample Rate: {sample_spec.get('sample_rate_hz', 'Unknown')} Hz")
+            click.echo(f"Channels: {sample_spec.get('channels', 'Unknown')}")
+
+            click.echo(f"Channel Map: {device_info.get('channel_map', [])}")
+            click.echo(f"Flags: {device_info.get('flags', [])}")
+
+            if device_info.get("mute") is not None:
+                click.echo(f"Mute: {device_info['mute']}")
+
+            if device_info.get("volume"):
+                click.echo(f"Volume: {device_info['volume']}")
+
+    except (DeviceNotFoundError, ValueError) as e:
+        if "not found" in str(e).lower():
+            click.echo(f"Device not found: {e}", err=True)
+        else:
+            click.echo(f"Error getting device info: {e}", err=True)
         raise click.Abort()
     except Exception as e:
         click.echo(f"Error getting device info: {e}", err=True)

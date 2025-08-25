@@ -7,7 +7,7 @@ from typing import Optional
 
 import numpy as np
 
-from .device_manager import DeviceManager
+from ..backends import DeviceBackend
 
 
 @dataclass
@@ -81,7 +81,8 @@ class AudioConfig:
 
         # Set device from device_name if specified
         if self.device_name is not None:
-            device = DeviceManager.find_device(self.device_name)
+            backend = DeviceBackend.get_backend()
+            device = backend.get_device_info(self.device_name)
             self.device = device["index"]
 
     def to_sounddevice_kwargs(self) -> dict:

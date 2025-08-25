@@ -6,10 +6,10 @@ from typing import Any
 
 import sounddevice as sd
 
-from mic_stream_util.backends.base_backend import BaseDeviceBackend, DeviceInfo, SampleSpecification
+from mic_stream_util.backends.base_backend import DeviceBackend, DeviceInfo, SampleSpecification
 
 
-class SounddeviceBackend(BaseDeviceBackend):
+class SounddeviceBackend(DeviceBackend):
     """Sounddevice backend implementation for audio device management."""
 
     DEVICE_IGNORE_LIST = [
@@ -24,6 +24,10 @@ class SounddeviceBackend(BaseDeviceBackend):
         "monitor",
         # "pulse",
     ]
+
+    def get_backend_name(self) -> str:
+        """Get the name of the backend."""
+        return "sounddevice"
 
     def backend_is_available(self) -> bool:
         """Check if the sounddevice backend is available."""
@@ -185,3 +189,11 @@ class SounddeviceBackend(BaseDeviceBackend):
             return True
         except sd.PortAudioError:
             return False
+
+    def prepare_device_for_streaming(self, device_identifier: int | str) -> dict:
+        """
+        Prepare a device for streaming with sounddevice.
+        For sounddevice, we just return the device index.
+        """
+        device_info = self.get_device_info(device_identifier)
+        return {"device": device_info["index"]}

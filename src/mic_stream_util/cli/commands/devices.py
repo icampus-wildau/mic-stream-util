@@ -19,9 +19,10 @@ def devices(json_output: bool, filter: Optional[str], threshold: int, include_un
     """List available audio input devices."""
     # Dynamic imports for better response time
     try:
-        from mic_stream_util.core.device_manager import DeviceManager
+        from mic_stream_util.backends import DeviceBackend
 
-        devices = DeviceManager.get_devices(include_unavailable=include_unavailable)
+        backend = DeviceBackend.get_backend()
+        devices = backend.get_all_devices()
 
         # Apply fuzzy filter if provided
         if filter:
@@ -49,16 +50,15 @@ def devices(json_output: bool, filter: Optional[str], threshold: int, include_un
                 json_device = {
                     "index": device["index"],
                     "name": device["name"],
-                    "max_input_channels": device["max_input_channels"],
-                    "default_samplerate": device.get("default_samplerate", "Unknown"),
-                    "hostapi": device.get("hostapi", "Unknown"),
-                    "status": device.get("status", "unknown"),
-                    "openable": device.get("openable", False),
+                    "description": device.get("description", ""),
+                    "driver": device.get("driver", "Unknown"),
+                    "sample_specification": device.get("sample_specification", {}),
+                    "channels": device.get("sample_specification", {}).get("channels", 0),
+                    "sample_rate": device.get("sample_specification", {}).get("sample_rate_hz", 0),
+                    "flags": device.get("flags", []),
                 }
                 if "match_score" in device:
                     json_device["match_score"] = device["match_score"]
-                if "open_error" in device:
-                    json_device["open_error"] = device["open_error"]
                 json_devices.append(json_device)
 
             click.echo(json.dumps(json_devices, indent=2))
@@ -66,30 +66,30 @@ def devices(json_output: bool, filter: Optional[str], threshold: int, include_un
             if filter:
                 click.echo(f"\nFiltered Audio Input Devices (filter: '{filter}', threshold: {threshold}):")
             else:
-                click.echo(f"\nAvailable Audio Input Devices ({len(devices)} found):")
+                click.echo(f"\nAvailable Audio Input Devices ({len(devices)} found) - Backend: {backend.get_backend_name()}")
             click.echo("-" * 80)
 
             for device in devices:
                 index = device["index"]
                 name = device["name"]
-                max_inputs = device["max_input_channels"]
-                default_samplerate = device.get("default_samplerate", "Unknown")
-                status = device.get("status", "unknown")
-                openable = device.get("openable", False)
+                description = device.get("description", "")
+                driver = device.get("driver", "Unknown")
+                sample_spec = device.get("sample_specification", {})
+                channels = sample_spec.get("channels", 0)
+                sample_rate = sample_spec.get("sample_rate_hz", 0)
+                flags = device.get("flags", [])
 
                 if "match_score" in device:
                     click.echo(f"[{index:2d}] {name} (score: {device['match_score']})")
                 else:
                     click.echo(f"[{index:2d}] {name}")
-                click.echo(f"     Inputs: {max_inputs}, Default Sample Rate: {default_samplerate}")
-                click.echo(f"     Status: {status}, Openable: {openable}")
 
-                # Show additional info if available
-                if "hostapi" in device:
-                    click.echo(f"     Host API: {device['hostapi']}")
-
-                if "open_error" in device:
-                    click.echo(f"     Open Error: {device['open_error']}")
+                if description and description != name:
+                    click.echo(f"     Description: {description}")
+                click.echo(f"     Driver: {driver}")
+                click.echo(f"     Sample Rate: {sample_rate} Hz, Channels: {channels}")
+                if flags:
+                    click.echo(f"     Flags: {', '.join(flags)}")
 
                 click.echo()
 
@@ -103,9 +103,18 @@ def devices(json_output: bool, filter: Optional[str], threshold: int, include_un
 def diagnose(json_output: bool):
     """Diagnose audio device issues."""
     try:
-        from mic_stream_util.core.device_manager import DeviceManager
+        from mic_stream_util.backends import DeviceBackend
 
-        diagnostics = DeviceManager.diagnose_device_issues()
+        backend = DeviceBackend.get_backend()
+        devices = backend.get_all_devices()
+
+        diagnostics = {"backend": backend.get_backend_name(), "backend_available": backend.backend_is_available(), "devices_found": len(devices), "recommendations": []}
+
+        if not backend.backend_is_available():
+            diagnostics["recommendations"].append(f"{backend.get_backend_name()} backend is not available")
+
+        if not devices:
+            diagnostics["recommendations"].append("No audio input devices detected")
 
         if json_output:
             click.echo(json.dumps(diagnostics, indent=2))
@@ -113,27 +122,11 @@ def diagnose(json_output: bool):
             click.echo("Audio Device Diagnostics")
             click.echo("=" * 50)
 
-            click.echo("\nALSA Devices:")
+            click.echo("\nBackend Information:")
             click.echo("-" * 20)
-            for line in diagnostics["alsa_devices"]:
-                click.echo(line)
-
-            click.echo("\nProcesses Using Audio:")
-            click.echo("-" * 25)
-            if diagnostics["processes_using_audio"]:
-                for line in diagnostics["processes_using_audio"]:
-                    click.echo(line)
-            else:
-                click.echo("No processes currently using audio devices")
-
-            click.echo("\nDevice Status:")
-            click.echo("-" * 15)
-            for device_name, status in diagnostics["device_status"].items():
-                click.echo(f"{device_name}:")
-                click.echo(f"  Input Channels: {status['max_input_channels']}")
-                click.echo(f"  Status: {status['status']}")
-                click.echo(f"  Openable: {status['openable']}")
-                click.echo()
+            click.echo(f"Backend: {diagnostics['backend']}")
+            click.echo(f"Available: {diagnostics['backend_available']}")
+            click.echo(f"Devices Found: {diagnostics['devices_found']}")
 
             click.echo("\nRecommendations:")
             click.echo("-" * 15)

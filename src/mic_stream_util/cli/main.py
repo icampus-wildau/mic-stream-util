@@ -6,7 +6,7 @@ from __future__ import annotations
 import click
 from click_aliases import ClickAliasedGroup
 
-from .commands import cpu_usage, device_info, devices, latency_test, loopback, memory_usage, monitor, record, spectrum, vad
+from .commands import cpu_usage, device_info, devices, latency_test, loopback, memory_usage, monitor, record, route, spectrum, vad
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -26,6 +26,7 @@ main.add_command(record.record, aliases=["r", "rec"])
 main.add_command(monitor.monitor, aliases=["m", "mon"])
 main.add_command(vad.vad, aliases=["v", "vad"])
 main.add_command(spectrum.spectrum, aliases=["s", "spec"])
+main.add_command(route.route, aliases=["rt"])
 main.add_command(loopback.loopback)
 main.add_command(cpu_usage.cpu_usage)
 main.add_command(memory_usage.memory_usage)
