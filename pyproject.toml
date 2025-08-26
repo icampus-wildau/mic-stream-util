@@ -22,11 +22,11 @@ dependencies = [
 [project.optional-dependencies]
 vad = [
     "torch>=2.7.1",
-    "silero-vad>=5.1.2",
+    "silero-vad>=6.0.0",
 ]
 all = [
     "torch>=2.7.1",
-    "silero-vad>=5.1.2",
+    "silero-vad>=6.0.0",
 ]
 
 [project.scripts]
